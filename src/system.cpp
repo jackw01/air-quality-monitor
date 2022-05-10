@@ -5,6 +5,11 @@ static float getAbsoluteHumidity(float t, float h) {
   return 216.7f * ((h / 100.0f) * 6.112f * exp((17.62f * t) / (243.12f + t)) / (273.15f + t));
 }
 
+// Celsius to Fahrenheit
+static float cToF(float t) {
+  return t * 1.8 + 32.0;
+}
+
 System::System() {
 }
 
@@ -20,12 +25,6 @@ void System::init() {
   u8g2.begin();
   u8g2.enableUTF8Print();
   u8g2.setFontMode(1);
-
-  // Hack to increase brightness range
-  u8x8_cad_StartTransfer(u8g2.getU8x8());
-  u8x8_cad_SendCmd(u8g2.getU8x8(), 0x0db);
-  u8x8_cad_SendArg(u8g2.getU8x8(), 0 << 4); // Replace 0 with Vcom deselect value 0 to 7
-  u8x8_cad_EndTransfer(u8g2.getU8x8());
   u8g2.setContrast(DisplayBrightness);
 
   // Display startup screen
