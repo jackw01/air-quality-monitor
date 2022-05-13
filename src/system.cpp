@@ -10,6 +10,7 @@ static float cToF(float t) {
   return t * 1.8 + 32.0;
 }
 
+
 System::System() {
 }
 
@@ -37,7 +38,7 @@ void System::init() {
   // Serial ports
 #ifdef SWSERIAL
     co2Serial->begin(9600, SWSERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
-    pmSerial->begin(9600, SERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
+    pmSerial->begin(9600, SWSERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
 #else
     co2Serial->begin(9600, SERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
     pmSerial->begin(9600, SERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
@@ -106,7 +107,6 @@ void System::tick() {
                                                               currentSensorData.humidity)));
     if (!sgp30.IAQmeasure()) {
       Serial.printf("SGP30 Failed to read VOC level\n");
-      return;
     }
     currentSensorData.tvoc = sgp30.TVOC;
     currentSensorData.eco2 = sgp30.eCO2;
@@ -217,7 +217,6 @@ void System::tick() {
     if (time - lastBaselineCheck >= SGP30BaselineCheckInterval) {
       if (!sgp30.getIAQBaseline(&sgp30Eco2Base, &sgp30TvocBase)) {
         Serial.printf("SGP30 Failed to read baseline values\n");
-        return;
       }
       Serial.printf("SGP30 Baseline eCO2 %04x TVOC %04x\n\n", sgp30Eco2Base, sgp30TvocBase);
       lastBaselineCheck = time;
@@ -235,8 +234,73 @@ void System::updateDisplay() {
   char line[32];
 
   if (displayOn) {
+    // Temperature and humidity line graphs
+    float values[DataHistoryLength];
+    float min = 100;
+    float max = -100;
+    for (uint8_t i = 0; i < DataHistoryLength; i++) {
+      values[i] = oldSensorData[i].temperature;
+      if (values[i] < min) min = values[i];
+      if (values[i] > max) max = values[i];
+    }
+    drawLineGraph(0, 8, 128, 11, values, DataHistoryLength, min, max, true);
 
+    min = 100;
+    max = -100;
+    for (uint8_t i = 0; i < DataHistoryLength; i++) {
+      values[i] = oldSensorData[i].humidity;
+      if (values[i] < min) min = values[i];
+      if (values[i] > max) max = values[i];
+    }
+    drawLineGraph(0, 8 + 12, 128, 11, values, DataHistoryLength, min, max, true);
   }
 
   u8g2.sendBuffer();
+}
+
+void System::drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                           int32_t values[], uint8_t count, int32_t min, int32_t max,
+                           bool showRange, uint8_t decimalPlaces, uint16_t scaling) {
+  uint8_t xOffset = 0;
+  if (showRange) {
+    char line[6];
+    u8g2.setFont(u8g2_font_tom_thumb_4x6_mn);
+    u8g2.setFontMode(0);
+
+    sprintf(line, "%.*f", decimalPlaces, (float)max / (float)scaling);
+    u8g2.drawStr(x, y + 6, line);
+    xOffset = u8g2.getStrWidth(line);
+
+    sprintf(line, "%.*f", decimalPlaces, (float)min / (float)scaling);
+    u8g2.drawStr(x, y + h + 1, line);
+    uint8_t xOffset2 = u8g2.getStrWidth(line);
+    if (xOffset2 > xOffset) xOffset = xOffset2;
+
+    u8g2.setFontMode(1);
+  }
+
+  uint8_t graphW = w - xOffset;
+  if (min != max && graphW / count >= 1) {
+    uint8_t lastY = map(values[0], min, max, y + h, y);
+    for (uint8_t i = 1; i < count; i++) {
+      uint8_t thisY = map(values[i], min, max, y + h, y);
+      u8g2.drawLine(x + xOffset + (i - 1) * graphW / count, lastY,
+                    x + xOffset + i * graphW / count, thisY);
+      lastY = thisY;
+    }
+  }
+}
+
+void System::drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                           float values[], uint8_t count, float min, float max,
+                           bool showRange, uint8_t decimalPlaces) {
+  uint16_t scaling = 10;
+  for (uint8_t i = 0; i < decimalPlaces - 1; i++) scaling *= 10;
+  int32_t intValues[count];
+  for (uint8_t i = 0; i < DataHistoryLength; i++) {
+    intValues[i] = (int32_t)(values[i] * scaling);
+  }
+  drawLineGraph(x, y, w, h,
+                intValues, count, (int32_t)(min * scaling), (int32_t)(max * scaling),
+                showRange, decimalPlaces, scaling);
 }

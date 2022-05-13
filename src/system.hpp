@@ -38,6 +38,13 @@ class System {
   private:
     void updateDisplay();
 
+    void drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                       int32_t values[], uint8_t count, int32_t min, int32_t max,
+                       bool showRange, uint8_t decimalPlaces = 0, uint16_t scaling = 1);
+    void drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                       float values[], uint8_t count, float min, float max,
+                       bool showRange, uint8_t decimalPlaces = 1);
+
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
     Adafruit_SGP30 sgp30 = Adafruit_SGP30();
 
