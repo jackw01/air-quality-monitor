@@ -3,6 +3,7 @@
 #include <SoftwareSerial.h>
 #include <HardwareSerial.h>
 #include <Adafruit_AHTX0.h>
+#include <Adafruit_SHT31.h>
 #include <Adafruit_SGP30.h>
 #include <Adafruit_PM25AQI.h>
 #include <MHZ.h>
@@ -13,8 +14,10 @@
 typedef struct {
   float temperature;         // C
   float humidity;            // %RH
-  float temperatureAdjusted; // C
-  float humidityAdjusted;    // %RH
+  float temperatureRaw;      // C
+  float humidityRaw;         // %RH
+  float absoluteHumidity;    // g/m^3
+  float dewPoint;            // C
   uint16_t tvoc;             // ppb
   uint16_t eco2;             // ppm
   uint16_t co2;              // ppm
@@ -45,7 +48,13 @@ class System {
                        float values[], uint8_t count, float min, float max,
                        bool showRange, uint8_t decimalPlaces = 1);
 
+#ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
+#endif
+#ifdef SHT31
+    Adafruit_SHT31 sht = Adafruit_SHT31();
+#endif
+
     Adafruit_SGP30 sgp30 = Adafruit_SGP30();
 
 #ifdef SWSERIAL

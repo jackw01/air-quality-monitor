@@ -1,5 +1,7 @@
 #pragma once
 
+//#define AHTx0
+#define SHT31
 //#define SWSERIAL
 
 typedef enum : uint8_t {
@@ -25,6 +27,7 @@ const uint32_t DisplayTimeout = 30000; // ms
 const uint8_t DataHistoryLength = 80; // samples
 
 // Sensor stuff
+const float TemperatureOffset = -10.0; // degrees C, compensate for sensor self heating
 const uint32_t SGP30BaselineCheckInterval = 60000; // ms
 
 // Calibration values - specific to each SGP30 sensor

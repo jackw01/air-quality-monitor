@@ -1,15 +1,30 @@
 #include "system.hpp"
 
-// Approximate absolute humidity formula
+// Approximate absolute humidity formula (grams / m^3)
 static float getAbsoluteHumidity(float t, float h) {
-  return 216.7f * ((h / 100.0f) * 6.112f * exp((17.62f * t) / (243.12f + t)) / (273.15f + t));
+  float b = 17.62;
+  float c = 243.12;
+  return 216.7f * ((h / 100.0f) * 6.112f * exp((b * t) / (c + t)) / (273.15f + t));
+}
+
+// Approximate dew point formula
+static float getDewPoint(float t, float h) {
+  float b = 17.62;
+  float c = 243.12;
+  return c * (log(h / 100.0f) + (b * t) / (c + t)) / (b - log(h / 100.0f) - (b * t) / (c + t));
+}
+
+// Approximate relative humidity formula
+static float getRelativeHumidity(float t, float td) {
+  float b = 17.62;
+  float c = 243.12;
+  return 100.0 * exp((c * b * (td - t)) / ((c + t) * (c + td)));
 }
 
 // Celsius to Fahrenheit
 static float cToF(float t) {
   return t * 1.8 + 32.0;
 }
-
 
 System::System() {
 }
@@ -45,7 +60,12 @@ void System::init() {
 #endif
 
   // Temp/Humidity
+#ifdef AHTx0
   if (! aht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
+#endif
+#ifdef SHT31
+  if (! sht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
+#endif
 
   // VOC
   if (!sgp30.begin()) Serial.printf("Failed to communicate with SGP30 sensor\n");
@@ -97,19 +117,34 @@ void System::tick() {
   if (time - lastUpdate >= UpdateInterval) {
 
     // Temp/Humidity
+#ifdef AHTx0
     sensors_event_t humidity, temp;
     aht.getEvent(&humidity, &temp);
+    currentSensorData.temperatureRaw = temp.temperature;
     currentSensorData.temperature = temp.temperature;
-    currentSensorData.humidity = humidity.relative_humidity;
+    currentSensorData.humidityRaw = humidity.relative_humidity;
+#endif
+#ifdef SHT31
+    sht.readBoth(&currentSensorData.temperatureRaw, &currentSensorData.humidityRaw);
+    currentSensorData.temperature = currentSensorData.temperatureRaw + TemperatureOffset;
+#endif
+
+    // Compensate humidity readings for sensor self-heating
+    currentSensorData.absoluteHumidity = getAbsoluteHumidity(currentSensorData.temperatureRaw,
+                                                             currentSensorData.humidityRaw);
+    currentSensorData.dewPoint = getDewPoint(currentSensorData.temperatureRaw,
+                                             currentSensorData.humidityRaw);
+    currentSensorData.humidity = getRelativeHumidity(currentSensorData.temperature,
+                                                     currentSensorData.dewPoint);
 
     // VOC
-    sgp30.setHumidity((uint32_t)(1000.0 * getAbsoluteHumidity(currentSensorData.temperature,
-                                                              currentSensorData.humidity)));
+    sgp30.setHumidity((uint32_t)(1000.0 * currentSensorData.absoluteHumidity));
     if (!sgp30.IAQmeasure()) {
       Serial.printf("SGP30 Failed to read VOC level\n");
+    } else {
+      currentSensorData.tvoc = sgp30.TVOC;
+      currentSensorData.eco2 = sgp30.eCO2;
     }
-    currentSensorData.tvoc = sgp30.TVOC;
-    currentSensorData.eco2 = sgp30.eCO2;
 
     // CO2
     int16_t co2 = mhz19.readCO2UART();
@@ -172,9 +207,11 @@ void System::tick() {
 
     // Serial output
     Serial.printf("Temperature C       : %f\n", currentSensorData.temperature);
-    Serial.printf("Temperature C (adj) : %f\n", currentSensorData.temperatureAdjusted);
+    Serial.printf("Temperature C (raw) : %f\n", currentSensorData.temperatureRaw);
     Serial.printf("Humidity %%RH        : %f\n", currentSensorData.humidity);
-    Serial.printf("Humidity %%RH (adj)  : %f\n", currentSensorData.humidityAdjusted);
+    Serial.printf("Humidity %%RH (raw)  : %f\n", currentSensorData.humidityRaw);
+    Serial.printf("Humidity g/m^3      : %f\n", currentSensorData.absoluteHumidity);
+    Serial.printf("Dew Point C         : %f\n", currentSensorData.dewPoint);
     Serial.printf("TVOC ppb            : %d\n", currentSensorData.tvoc);
     Serial.printf("eCO2 ppm            : %d\n", currentSensorData.eco2);
     Serial.printf("CO2 ppm             : %d\n", currentSensorData.co2);
