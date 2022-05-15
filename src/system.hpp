@@ -68,7 +68,7 @@ class System {
     MHZ mhz19 = MHZ(co2Serial, MHZ19C);
     Adafruit_PM25AQI pms5003 = Adafruit_PM25AQI();
 
-    U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2 = U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0);
+    U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2 = U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R2);
 
     bool firstUpdate = true;
     uint32_t lastUpdate = 0;

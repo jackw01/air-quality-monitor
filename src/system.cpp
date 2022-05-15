@@ -45,7 +45,7 @@ void System::init() {
 
   // Display startup screen
   u8g2.setFont(u8g2_font_profont10_tf);
-  u8g2.drawStr(0, 6, "Initializing sensors...");
+  u8g2.drawStr(0, 6, "Connecting to WiFi...");
   u8g2.sendBuffer();
 
   // Check for sensors
@@ -83,11 +83,11 @@ void System::init() {
   digitalWrite(PinPMS5003Enable, false);
 
   Serial.printf("CO2 sensor preheat...\n");
-  u8g2.drawStr(0, 6 + 8 * 3, "CO2 sensor preheat...");
-  u8g2.drawFrame(0, 52, MHZ19StartupPeriod + 4, 12);
+  u8g2.drawStr(0, 6 + 10, "CO2 sensor preheat...");
+  u8g2.drawFrame(0, 24, MHZ19StartupPeriod + 4, 8);
   u8g2.sendBuffer();
   for (uint8_t i = 0; i < MHZ19StartupPeriod; i++) {
-    u8g2.drawBox(2, 54, i, 8);
+    u8g2.drawBox(2, 26, i, 4);
     u8g2.sendBuffer();
     delay(1000);
   }
@@ -107,6 +107,7 @@ void System::tick() {
       if (displayOn == false) {
         // If display is off, turn it on
         displayOn = true;
+        displayState = DisplayStatePM;
       }
     }
     lastButtonChange = time;
@@ -242,7 +243,7 @@ void System::tick() {
     // Save historical data
     if (time - lastDataHistoryUpdate >= DataHistoryUpdateInterval || firstUpdate) {
       for (uint8_t i = 0; i < DataHistoryLength - 1; i++) {
-        if (firstUpdate && i > 0) oldSensorData[i] = currentSensorData;
+        if (firstUpdate) oldSensorData[i] = currentSensorData;
         else oldSensorData[i] = oldSensorData[i + 1];
       }
       oldSensorData[DataHistoryLength - 1] = currentSensorData;
@@ -271,25 +272,91 @@ void System::updateDisplay() {
   char line[32];
 
   if (displayOn) {
-    // Temperature and humidity line graphs
-    float values[DataHistoryLength];
-    float min = 100;
-    float max = -100;
-    for (uint8_t i = 0; i < DataHistoryLength; i++) {
-      values[i] = oldSensorData[i].temperature;
-      if (values[i] < min) min = values[i];
-      if (values[i] > max) max = values[i];
-    }
-    drawLineGraph(0, 8, 128, 11, values, DataHistoryLength, min, max, true);
+    if (displayState == DisplayStateTempHumidity) {
+      // Big text
+      u8g2.setFont(u8g2_font_profont22_tf);
+      sprintf(line, "%2.1fC", currentSensorData.temperature);
+      u8g2.drawUTF8(0, 14, line);
+      sprintf(line, "%2.0f%%RH", currentSensorData.humidity);
+      u8g2.drawUTF8(66, 14, line);
 
-    min = 100;
-    max = -100;
-    for (uint8_t i = 0; i < DataHistoryLength; i++) {
-      values[i] = oldSensorData[i].humidity;
-      if (values[i] < min) min = values[i];
-      if (values[i] > max) max = values[i];
+      // Line graphs
+      float values[DataHistoryLength];
+      float min = 100;
+      float max = -100;
+      for (uint8_t i = 0; i < DataHistoryLength; i++) {
+        values[i] = oldSensorData[i].temperature;
+        if (values[i] < min) min = values[i];
+        if (values[i] > max) max = values[i];
+      }
+      drawLineGraph(0, 16, 62, 15, values, DataHistoryLength, min - 1, max + 1, false);
+
+      min = 100;
+      max = -100;
+      for (uint8_t i = 0; i < DataHistoryLength; i++) {
+        values[i] = oldSensorData[i].humidity;
+        if (values[i] < min) min = values[i];
+        if (values[i] > max) max = values[i];
+      }
+      drawLineGraph(64, 16, 62, 15, values, DataHistoryLength, min - 1, max + 1, false);
+    } else if (displayState == DisplayStateVOC) {
+      // Big text
+      u8g2.setFont(u8g2_font_profont22_tf);
+      sprintf(line, "%5d", currentSensorData.tvoc);
+      uint8_t width = u8g2.drawUTF8(0, 14, line);
+
+      u8g2.setFont(u8g2_font_profont17_tf);
+      u8g2.drawUTF8(width, 11, "ppb VOC");
+
+      // Line graph
+      int32_t values[DataHistoryLength];
+      int32_t min = 65535;
+      int32_t max = 0;
+      for (uint8_t i = 0; i < DataHistoryLength; i++) {
+        values[i] = oldSensorData[i].tvoc;
+        if (values[i] < min) min = values[i];
+        if (values[i] > max) max = values[i];
+      }
+      drawLineGraph(0, 16, 128, 15, values, DataHistoryLength, 0, max, true);
+    } else if (displayState == DisplayStateCO2) {
+      // Big text
+      u8g2.setFont(u8g2_font_profont22_tf);
+      sprintf(line, "%4d", currentSensorData.co2);
+      uint8_t width = u8g2.drawUTF8(0, 14, line);
+
+      u8g2.setFont(u8g2_font_profont17_tf);
+      u8g2.drawUTF8(width, 11, "ppm CO2");
+
+      // Line graph
+      int32_t values[DataHistoryLength];
+      int32_t min = 65535;
+      int32_t max = 0;
+      for (uint8_t i = 0; i < DataHistoryLength; i++) {
+        values[i] = oldSensorData[i].co2;
+        if (values[i] < min) min = values[i];
+        if (values[i] > max) max = values[i];
+      }
+      drawLineGraph(0, 16, 128, 15, values, DataHistoryLength, 400, max, true);
+    } else if (displayState == DisplayStatePM) {
+      // Big text
+      u8g2.setFont(u8g2_font_profont22_tf);
+      sprintf(line, "%3d", min((int32_t)currentSensorData.pm25, 999));
+      uint8_t width = u8g2.drawUTF8(0, 14, line);
+
+      u8g2.setFont(u8g2_font_profont12_tf);
+      u8g2.drawUTF8(width, 11, "ug/m^3 PM2.5");
+
+      // Line graph
+      int32_t values[DataHistoryLength];
+      int32_t min = 65535;
+      int32_t max = 0;
+      for (uint8_t i = 0; i < DataHistoryLength; i++) {
+        values[i] = oldSensorData[i].pm25;
+        if (values[i] < min) min = values[i];
+        if (values[i] > max) max = values[i];
+      }
+      drawLineGraph(0, 16, 128, 15, values, DataHistoryLength, 0, max + 1, true);
     }
-    drawLineGraph(0, 8 + 12, 128, 11, values, DataHistoryLength, min, max, true);
   }
 
   u8g2.sendBuffer();
