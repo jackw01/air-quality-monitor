@@ -41,7 +41,7 @@ void System::init() {
   u8g2.begin();
   u8g2.enableUTF8Print();
   u8g2.setFontMode(1);
-  u8g2.setContrast(DisplayBrightness);
+  setDisplayBrightness(DisplayBrightness);
 
   // Display startup screen
   u8g2.setFont(u8g2_font_profont10_tf);
@@ -106,8 +106,15 @@ void System::tick() {
       lastDisplayOn = time;
       if (displayOn == false) {
         // If display is off, turn it on
+        setDisplayBrightness(DisplayBrightness);
         displayOn = true;
-        displayState = DisplayStatePM;
+        lastDisplayCycle = time;
+      } else if (displayCycle == true) {
+        // If display is on, stop display from cycling automatically
+        displayCycle = false;
+      } else if (displayCycle == false) {
+        // Manually cycle display state
+        if (++displayState == DisplayStates) displayState = 0;
       }
     }
     lastButtonChange = time;
@@ -260,8 +267,18 @@ void System::tick() {
       lastBaselineCheck = time;
     }
 
+    // Cycle display states
+    if (displayCycle && time - lastDisplayCycle >= DisplayAutoCycleInterval) {
+      if (++displayState == DisplayStates) displayState = 0;
+      lastDisplayCycle = time;
+    }
+
     // Display timeout
-    if (time - lastDisplayOn >= DisplayTimeout) displayOn = false;
+    if (time - lastDisplayOn >= DisplayTimeout) {
+      setDisplayBrightness(0, 15, 6);
+      displayOn = false;
+      displayCycle = true;
+    }
     updateDisplay();
     lastUpdate = time;
   }
@@ -270,15 +287,22 @@ void System::tick() {
 void System::updateDisplay() {
   u8g2.clearBuffer();
   char line[32];
+  uint8_t width;
 
-  if (displayOn) {
+  if (displayOn || DisplayAlwaysOn) {
     if (displayState == DisplayStateTempHumidity) {
       // Big text
       u8g2.setFont(u8g2_font_profont22_tf);
-      sprintf(line, "%2.1fC", currentSensorData.temperature);
-      u8g2.drawUTF8(0, 14, line);
-      sprintf(line, "%2.0f%%RH", currentSensorData.humidity);
-      u8g2.drawUTF8(66, 14, line);
+      sprintf(line, "%2.1f", currentSensorData.temperature);
+      width = u8g2.drawUTF8(0, 14, line);
+      u8g2.setFont(u8g2_font_profont12_tf);
+      u8g2.drawUTF8(width, 11, "°C");
+
+      u8g2.setFont(u8g2_font_profont22_tf);
+      sprintf(line, "%2.0f", currentSensorData.humidity);
+      width = u8g2.drawUTF8(66, 14, line);
+      u8g2.setFont(u8g2_font_profont12_tf);
+      u8g2.drawUTF8(66 + width, 11, "%RH");
 
       // Line graphs
       float values[DataHistoryLength];
@@ -303,9 +327,8 @@ void System::updateDisplay() {
       // Big text
       u8g2.setFont(u8g2_font_profont22_tf);
       sprintf(line, "%5d", currentSensorData.tvoc);
-      uint8_t width = u8g2.drawUTF8(0, 14, line);
-
-      u8g2.setFont(u8g2_font_profont17_tf);
+      width = u8g2.drawUTF8(0, 14, line);
+      u8g2.setFont(u8g2_font_profont12_tf);
       u8g2.drawUTF8(width, 11, "ppb VOC");
 
       // Line graph
@@ -322,9 +345,8 @@ void System::updateDisplay() {
       // Big text
       u8g2.setFont(u8g2_font_profont22_tf);
       sprintf(line, "%4d", currentSensorData.co2);
-      uint8_t width = u8g2.drawUTF8(0, 14, line);
-
-      u8g2.setFont(u8g2_font_profont17_tf);
+      width = u8g2.drawUTF8(0, 14, line);
+      u8g2.setFont(u8g2_font_profont12_tf);
       u8g2.drawUTF8(width, 11, "ppm CO2");
 
       // Line graph
@@ -340,9 +362,8 @@ void System::updateDisplay() {
     } else if (displayState == DisplayStatePM) {
       // Big text
       u8g2.setFont(u8g2_font_profont22_tf);
-      sprintf(line, "%3d", min((int32_t)currentSensorData.pm25, 999));
-      uint8_t width = u8g2.drawUTF8(0, 14, line);
-
+      sprintf(line, "%4d", min((int32_t)currentSensorData.pm25, 9999));
+      width = u8g2.drawUTF8(0, 14, line);
       u8g2.setFont(u8g2_font_profont12_tf);
       u8g2.drawUTF8(width, 11, "ug/m^3 PM2.5");
 
@@ -407,4 +428,18 @@ void System::drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
   drawLineGraph(x, y, w, h,
                 intValues, count, (int32_t)(min * scaling), (int32_t)(max * scaling),
                 showRange, decimalPlaces, scaling);
+}
+
+void System::setDisplayBrightness(uint8_t brightness, uint8_t p1, uint8_t p2) {
+  u8x8_cad_StartTransfer(u8g2.getU8x8());
+  // Set Vcom deselect value to 0 to increase range
+  u8x8_cad_SendCmd(u8g2.getU8x8(), 0x0db);
+  u8x8_cad_SendArg(u8g2.getU8x8(), 0 << 4);
+  u8x8_cad_EndTransfer(u8g2.getU8x8());
+  // Set precharge period value 1-15 - p1 higher = darker, p2 higher = brighter
+  u8x8_cad_StartTransfer(u8g2.getU8x8());
+  u8x8_cad_SendCmd(u8g2.getU8x8(), 0x0d9);
+  u8x8_cad_SendArg(u8g2.getU8x8(), (p2 << 4) | p1);
+  u8x8_cad_EndTransfer(u8g2.getU8x8());
+  u8g2.setContrast(brightness);
 }

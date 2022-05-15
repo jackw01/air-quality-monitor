@@ -47,6 +47,7 @@ class System {
     void drawLineGraph(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
                        float values[], uint8_t count, float min, float max,
                        bool showRange, uint8_t decimalPlaces = 1);
+    void setDisplayBrightness(uint8_t brightness, uint8_t p1 = 1, uint8_t p2 = 10);
 
 #ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
@@ -75,6 +76,7 @@ class System {
     uint32_t lastBaselineCheck = 0;
     uint32_t lastDataHistoryUpdate = 0;
     uint32_t lastDataPoint = 0;
+    uint32_t lastDisplayCycle = 0;
     uint32_t lastDisplayOn = 0;
     uint32_t lastPMWake = 0;
     bool pmMeasurementDone = false;

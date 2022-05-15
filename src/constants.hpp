@@ -27,12 +27,14 @@ typedef enum : uint8_t {
   DisplayStates
 } DisplayState;
 
-const uint8_t DisplayBrightness = 64;
+const bool DisplayAlwaysOn = true;
+const uint8_t DisplayBrightness = 128;
 
 const uint8_t DebounceInterval = 20;
 const uint16_t UpdateInterval = 1000; // ms per tick
 const uint32_t DataHistoryUpdateInterval = 60000; // ms
 const uint32_t DataPushToServerInterval = 15000; // ms
+const uint32_t DisplayAutoCycleInterval = 5000; // ms
 const uint32_t DisplayTimeout = 30000; // ms
 
 const uint8_t DataHistoryLength = 60; // samples
