@@ -12,24 +12,24 @@
 #include "constants.hpp"
 
 typedef struct {
-  float temperature;         // C
-  float humidity;            // %RH
-  float temperatureRaw;      // C
-  float humidityRaw;         // %RH
-  float absoluteHumidity;    // g/m^3
-  float dewPoint;            // C
+  float temperature;         // C - temperature compensated for sensor self-heating
+  float humidity;            // %RH - humidity compensated for sensor self-heating
+  float temperatureRaw;      // C - raw temperature - for debug purposes
+  float humidityRaw;         // %RH - raw relative humidity - for debug purposes
+  float absoluteHumidity;    // g/m^3 - always correct, independent of sensor temperature
+  float dewPoint;            // C - always correct, independent of sensor temperature
   uint16_t tvoc;             // ppb
   uint16_t eco2;             // ppm
   uint16_t co2;              // ppm
   uint16_t pm10;             // μg/m^3
   uint16_t pm25;             // μg/m^3
   uint16_t pm100;            // μg/m^3
-  uint16_t part003;          // particles per deciliter
-  uint16_t part005;          // particles per deciliter
-  uint16_t part010;          // particles per deciliter
-  uint16_t part025;          // particles per deciliter
-  uint16_t part050;          // particles per deciliter
-  uint16_t part100;          // particles per deciliter
+  uint16_t part003;          // particles per deciliter - debug purposes only
+  uint16_t part005;          // particles per deciliter - debug purposes only
+  uint16_t part010;          // particles per deciliter - debug purposes only
+  uint16_t part025;          // particles per deciliter - debug purposes only
+  uint16_t part050;          // particles per deciliter - debug purposes only
+  uint16_t part100;          // particles per deciliter - debug purposes only
 } sensor_data;
 
 class System {

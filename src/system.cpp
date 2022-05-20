@@ -82,6 +82,7 @@ void System::init() {
   pms5003.begin_UART(pmSerial);
   digitalWrite(PinPMS5003Enable, false);
 
+  // Wait for CO2 sensor
   Serial.printf("CO2 sensor preheat...\n");
   u8g2.drawStr(0, 6 + 10, "CO2 sensor preheat...");
   u8g2.drawFrame(0, 24, MHZ19StartupPeriod + 4, 8);
@@ -275,7 +276,7 @@ void System::tick() {
 
     // Display timeout
     if (time - lastDisplayOn >= DisplayTimeout) {
-      setDisplayBrightness(0, 15, 6);
+      setDisplayBrightness(0, 7, 7);
       displayOn = false;
       displayCycle = true;
     }
@@ -358,7 +359,7 @@ void System::updateDisplay() {
         if (values[i] < min) min = values[i];
         if (values[i] > max) max = values[i];
       }
-      drawLineGraph(0, 16, 128, 15, values, DataHistoryLength, 400, max, true);
+      drawLineGraph(0, 16, 128, 15, values, DataHistoryLength, min, max, true);
     } else if (displayState == DisplayStatePM) {
       // Big text
       u8g2.setFont(u8g2_font_profont22_tf);
