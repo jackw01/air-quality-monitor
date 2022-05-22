@@ -1,3 +1,6 @@
+#ifndef SYSTEM_HPP	
+#define SYSTEM_HPP	
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
@@ -8,6 +11,9 @@
 #include <Adafruit_PM25AQI.h>
 #include <MHZ.h>
 #include <U8g2lib.h>
+#include <WiFiMulti.h>	
+#include <InfluxDbClient.h>	
+#include <InfluxDbCloud.h>
 
 #include "constants.hpp"
 
@@ -37,6 +43,8 @@ class System {
     System();
     void init();
     void tick();
+    template <typename T>	
+    void sendSensorData(Point sensor, String measurementName, T measurementValue);	
 
   private:
     void updateDisplay();
@@ -48,6 +56,14 @@ class System {
                        float values[], uint8_t count, float min, float max,
                        bool showRange, uint8_t decimalPlaces = 1);
     void setDisplayBrightness(uint8_t brightness, uint8_t p1 = 1, uint8_t p2 = 10);
+    void connectToDatabase();  // call in setup	
+    Point temperature{"Temperature"};	
+    Point humidity{"Humidity"};	
+    Point voc{"Volatile Organic Compounds"};	
+    Point co2{"Carbon Dioxide"};	
+    Point pm{"Particulate Matter"};	
+    static WiFiMulti wifiMulti;	
+    InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert};
 
 #ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
@@ -98,3 +114,5 @@ class System {
     sensor_data pmTempData;
     uint8_t pmSampleCount = 0;
 };
+
+#endif
