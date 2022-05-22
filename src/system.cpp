@@ -1,5 +1,28 @@
 #include "system.hpp"
 
+template <typename T>
+void System::sendSensorData(Point sensor, String measurementName, T measurementValue)
+{
+  // measurementName   - what is being measured (e.g., "Degrees C"). _field on influx
+  // measurementValue  - the amount of whatever was measured (e.g., 32). _value on influx
+  // sensor            - the data point to be added to influx (e.g., Point temperature{"Temperature"}).
+  
+  // Data point
+  sensor.clearFields();
+  sensor.addField(measurementName, measurementValue);
+  // Check WiFi connection and reconnect if needed
+  if (wifiMulti.run() != WL_CONNECTED) {
+    Serial.println("Wifi connection lost");
+  }
+
+  // Write point
+  if (!client.writePoint(sensor)) {
+    Serial.print("InfluxDB write failed: ");
+    Serial.println(client.getLastErrorMessage());
+  }
+}
+
+
 // Approximate absolute humidity formula (grams / m^3)
 static float getAbsoluteHumidity(float t, float h) {
   float b = 17.62;
@@ -92,7 +115,8 @@ void System::init() {
     u8g2.sendBuffer();
     delay(1000);
   }
-
+  
+  connectToDatabase();
   Serial.printf("\n\n");
 }
 
@@ -443,4 +467,34 @@ void System::setDisplayBrightness(uint8_t brightness, uint8_t p1, uint8_t p2) {
   u8x8_cad_SendArg(u8g2.getU8x8(), (p2 << 4) | p1);
   u8x8_cad_EndTransfer(u8g2.getU8x8());
   u8g2.setContrast(brightness);
+}
+
+void System::connectToDatabase() {
+  // call in setup
+  Serial.begin(115200);
+
+  // Setup wifi
+  WiFi.mode(WIFI_STA);
+  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
+
+  Serial.printf("Connecting to wifi");
+  if (wifiMulti.run() != WL_CONNECTED) {
+    Serial.printf("Could not connect to wifi.");
+  }
+  Serial.println();
+
+  // Add tags - only once
+  // sensor.addTag("Sensor", "SensorName");
+
+  // not needeed if not using influxdb cloud
+  timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
+
+  // Check server connection
+  if (client.validateConnection()) {
+    Serial.printf("Connected to InfluxDB: ");
+    Serial.println(client.getServerUrl());
+  } else {
+    Serial.printf("InfluxDB connection failed: ");
+    Serial.println(client.getLastErrorMessage());
+  }
 }
