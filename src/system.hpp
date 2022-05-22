@@ -57,11 +57,11 @@ class System {
                        bool showRange, uint8_t decimalPlaces = 1);
     void setDisplayBrightness(uint8_t brightness, uint8_t p1 = 1, uint8_t p2 = 10);
     void connectToDatabase();  // call in setup	
-    Point temperature{"Temperature"};	
-    Point humidity{"Humidity"};	
-    Point voc{"Volatile Organic Compounds"};	
-    Point co2{"Carbon Dioxide"};	
-    Point pm{"Particulate Matter"};	
+    Point temperature_point{"Temperature"};	
+    Point humidity_point{"Humidity"};	
+    Point voc_point{"Volatile Organic Compounds"};	
+    Point co2_point{"Carbon Dioxide"};	
+    Point pm_point{"Particulate Matter"};	
     static WiFiMulti wifiMulti;	
     InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert};
     // InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN};  // for influxdb2 (not cloud)
