@@ -64,6 +64,7 @@ class System {
     Point pm{"Particulate Matter"};	
     static WiFiMulti wifiMulti;	
     InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert};
+    // InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN};  // for influxdb2 (not cloud)
 
 #ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
