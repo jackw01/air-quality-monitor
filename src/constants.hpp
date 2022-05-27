@@ -56,10 +56,10 @@ const uint32_t PMWakeDelay = 25000; // ms, time to wait after waking up the sens
 const uint32_t PMReadPeriod = 5000; // ms, time to sample the sensor after the wake delay
 
 // for influxdb
-const char* WIFI_SSID("ResNet Mobile Access");  // WiFi AP SSID
-const char* WIFI_PASSWORD("");  // WiFi password
-const char* INFLUXDB_URL("https://eastus-1.azure.cloud2.influxdata.com");  // InfluxDB v2 server url
-const char* INFLUXDB_TOKEN("oTCuGzMSCrZrmrMO6xAZRvUDXFLWwpaWZkJDmj_mnAY-uqH8daolpmiDBuxGWOMa-lZB7rSq_tKFNaYn4lvUaQ==");  // InfluxDB v2 server or cloud API token
-const char* INFLUXDB_ORG("cs147group11");// InfluxDB v2 organization id
-const char* INFLUXDB_BUCKET("Indoor Air Quality Monitoring");  // InfluxDB v2 bucket name
-const char* TZ_INFO("CET-1CEST,M3.5.0,M10.5.0/3");  // not needeed if not using influxdb cloud
+const char* const WIFI_SSID = "test network";  // WiFi AP SSID
+const char* const WIFI_PASSWORD = "testtest";  // WiFi password
+const char* const INFLUXDB_URL = "https://eastus-1.azure.cloud2.influxdata.com";  // InfluxDB v2 server url
+const char* const INFLUXDB_TOKEN = "oTCuGzMSCrZrmrMO6xAZRvUDXFLWwpaWZkJDmj_mnAY-uqH8daolpmiDBuxGWOMa-lZB7rSq_tKFNaYn4lvUaQ==";  // InfluxDB v2 server or cloud API token
+const char* const INFLUXDB_ORG = "cs147group11";// InfluxDB v2 organization id
+const char* const INFLUXDB_BUCKET = "Indoor Air Quality Monitoring";  // InfluxDB v2 bucket name
+const char* const TZ_INFO = "CET-1CEST,M3.5.0,M10.5.0/3";  // not needeed if not using influxdb cloud
