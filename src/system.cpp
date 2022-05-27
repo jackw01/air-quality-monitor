@@ -1,15 +1,13 @@
 #include "system.hpp"
-
-template <typename T>
-void System::sendSensorData(Point sensor, String measurementName, T measurementValue)
+	
+void System::sendSensorData(Point sensor)
 {
   // measurementName   - what is being measured (e.g., "Degrees C"). _field on influx
   // measurementValue  - the amount of whatever was measured (e.g., 32). _value on influx
   // sensor            - the data point to be added to influx (e.g., Point temperature{"Temperature"}).
   
   // Data point
-  sensor.clearFields();
-  sensor.addField(measurementName, measurementValue);
+  
   // Check WiFi connection and reconnect if needed
   if (wifiMulti.run() != WL_CONNECTED) {
     Serial.println("Wifi connection lost");
@@ -116,7 +114,30 @@ void System::init() {
     delay(1000);
   }
   
-  connectToDatabase();
+  // Setup wifi
+  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
+
+  Serial.printf("Connecting to wifi");
+  if (wifiMulti.run() != WL_CONNECTED) {
+    Serial.printf("Could not connect to wifi.");
+  }
+  Serial.println();
+
+  // Add tags - only once
+  // sensor.addTag("Sensor", "SensorName");
+
+  // not needeed if not using influxdb cloud
+  timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
+
+  // Check server connection
+  if (client.validateConnection()) {
+    Serial.printf("Connected to InfluxDB: ");
+    Serial.println(client.getServerUrl());
+  } else {
+    Serial.printf("InfluxDB connection failed: ");
+    Serial.println(client.getLastErrorMessage());
+  }
+
   Serial.printf("\n\n");
 }
 
@@ -185,6 +206,9 @@ void System::tick() {
       currentSensorData.co2 = co2;
       // Send data
       // TODO: since co2 sensor only produces data every 120 seconds, send it here
+      co2_point.clearFields();
+      co2_point.addField("CO2 PPM", currentSensorData.co2);
+      sendSensorData(co2_point);
     } else {
       Serial.printf("MHZ19 No new data available\n");
     }
@@ -217,6 +241,11 @@ void System::tick() {
 
       // Send data
       // TODO: since pm sensor only produces data every 120 seconds, send it here
+      pm_point.clearFields();
+      pm_point.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
+      pm_point.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
+      pm_point.addField("PM 10 μg/m^3", currentSensorData.pm100);
+      sendSensorData(pm_point);
     }
 
     pmRead = pms5003.read(&pm);
@@ -268,6 +297,19 @@ void System::tick() {
     if (time - lastDataPoint >= DataPushToServerInterval) {
 
       // TODO
+      temperature_point.clearFields();
+      temperature_point.addField("Temperature C", currentSensorData.temperature);
+      temperature_point.addField("Dew Point C", currentSensorData.dewPoint);
+      sendSensorData(temperature_point);
+
+      humidity_point.clearFields();
+      humidity_point.addField("Relative Humidity %", currentSensorData.humidity);
+      humidity_point.addField("Absolute Humidity g/m^3", currentSensorData.absoluteHumidity);
+      sendSensorData(humidity_point);
+
+      voc_point.clearFields();
+      voc_point.addField("TVOC PPB", currentSensorData.tvoc);
+      sendSensorData(voc_point);
 
       lastDataPoint = time;
     }
@@ -467,34 +509,4 @@ void System::setDisplayBrightness(uint8_t brightness, uint8_t p1, uint8_t p2) {
   u8x8_cad_SendArg(u8g2.getU8x8(), (p2 << 4) | p1);
   u8x8_cad_EndTransfer(u8g2.getU8x8());
   u8g2.setContrast(brightness);
-}
-
-void System::connectToDatabase() {
-  // call in setup
-  Serial.begin(115200);
-
-  // Setup wifi
-  WiFi.mode(WIFI_STA);
-  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
-
-  Serial.printf("Connecting to wifi");
-  if (wifiMulti.run() != WL_CONNECTED) {
-    Serial.printf("Could not connect to wifi.");
-  }
-  Serial.println();
-
-  // Add tags - only once
-  // sensor.addTag("Sensor", "SensorName");
-
-  // not needeed if not using influxdb cloud
-  timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
-
-  // Check server connection
-  if (client.validateConnection()) {
-    Serial.printf("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
-  } else {
-    Serial.printf("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
-  }
 }
