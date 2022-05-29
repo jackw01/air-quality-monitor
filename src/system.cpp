@@ -1,25 +1,4 @@
 #include "system.hpp"
-	
-void System::sendSensorData(Point sensor)
-{
-  // measurementName   - what is being measured (e.g., "Degrees C"). _field on influx
-  // measurementValue  - the amount of whatever was measured (e.g., 32). _value on influx
-  // sensor            - the data point to be added to influx (e.g., Point temperature{"Temperature"}).
-  
-  // Data point
-  
-  // Check WiFi connection and reconnect if needed
-  if (wifiMulti.run() != WL_CONNECTED) {
-    Serial.println("Wifi connection lost");
-  }
-
-  // Write point
-  if (!client.writePoint(sensor)) {
-    Serial.print("InfluxDB write failed: ");
-    Serial.println(client.getLastErrorMessage());
-  }
-}
-
 
 // Approximate absolute humidity formula (grams / m^3)
 static float getAbsoluteHumidity(float t, float h) {
@@ -69,6 +48,33 @@ void System::init() {
   u8g2.drawStr(0, 6, "Connecting to WiFi...");
   u8g2.sendBuffer();
 
+  // Connect to wifi
+  Serial.printf("Connecting to WiFi...");
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  for (uint8_t i = 0; i < WiFiCount; i++) wifiMulti.addAP(WiFiSSID[i], WiFiPassword[i]);
+  while (wifiMulti.run() != WL_CONNECTED) {
+    Serial.printf(".");
+    delay(100);
+  }
+  Serial.printf("\n");
+  timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
+
+  temperaturePoint.addTag("ssid", WiFi.SSID());
+  humidityPoint.addTag("ssid", WiFi.SSID());
+  vocPoint.addTag("ssid", WiFi.SSID());
+  co2Point.addTag("ssid", WiFi.SSID());
+  pmPoint.addTag("ssid", WiFi.SSID());
+
+  // Check server connection
+  if (client.validateConnection()) {
+    Serial.printf("Connected to InfluxDB: ");
+    Serial.println(client.getServerUrl());
+  } else {
+    Serial.printf("InfluxDB connection failed: ");
+    Serial.println(client.getLastErrorMessage());
+  }
+
   // Check for sensors
 
   // Serial ports
@@ -112,30 +118,6 @@ void System::init() {
     u8g2.drawBox(2, 26, i, 4);
     u8g2.sendBuffer();
     delay(1000);
-  }
-  
-  // Setup wifi
-  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
-
-  Serial.printf("Connecting to wifi");
-  if (wifiMulti.run() != WL_CONNECTED) {
-    Serial.printf("Could not connect to wifi.");
-  }
-  Serial.println();
-
-  // Add tags - only once
-  // sensor.addTag("Sensor", "SensorName");
-
-  // not needeed if not using influxdb cloud
-  timeSync(TZ_INFO, "pool.ntp.org", "time.nis.gov");
-
-  // Check server connection
-  if (client.validateConnection()) {
-    Serial.printf("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
-  } else {
-    Serial.printf("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
   }
 
   Serial.printf("\n\n");
@@ -206,9 +188,9 @@ void System::tick() {
       currentSensorData.co2 = co2;
       // Send data
       // TODO: since co2 sensor only produces data every 120 seconds, send it here
-      co2_point.clearFields();
-      co2_point.addField("CO2 PPM", currentSensorData.co2);
-      sendSensorData(co2_point);
+      co2Point.clearFields();
+      co2Point.addField("CO2 PPM", currentSensorData.co2);
+      sendSensorData(co2Point);
     } else {
       Serial.printf("MHZ19 No new data available\n");
     }
@@ -241,11 +223,11 @@ void System::tick() {
 
       // Send data
       // TODO: since pm sensor only produces data every 120 seconds, send it here
-      pm_point.clearFields();
-      pm_point.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
-      pm_point.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
-      pm_point.addField("PM 10 μg/m^3", currentSensorData.pm100);
-      sendSensorData(pm_point);
+      pmPoint.clearFields();
+      pmPoint.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
+      pmPoint.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
+      pmPoint.addField("PM 10 μg/m^3", currentSensorData.pm100);
+      sendSensorData(pmPoint);
     }
 
     pmRead = pms5003.read(&pm);
@@ -297,19 +279,19 @@ void System::tick() {
     if (time - lastDataPoint >= DataPushToServerInterval) {
 
       // TODO
-      temperature_point.clearFields();
-      temperature_point.addField("Temperature C", currentSensorData.temperature);
-      temperature_point.addField("Dew Point C", currentSensorData.dewPoint);
-      sendSensorData(temperature_point);
+      temperaturePoint.clearFields();
+      temperaturePoint.addField("Temperature C", currentSensorData.temperature);
+      temperaturePoint.addField("Dew Point C", currentSensorData.dewPoint);
+      sendSensorData(temperaturePoint);
 
-      humidity_point.clearFields();
-      humidity_point.addField("Relative Humidity %", currentSensorData.humidity);
-      humidity_point.addField("Absolute Humidity g/m^3", currentSensorData.absoluteHumidity);
-      sendSensorData(humidity_point);
+      humidityPoint.clearFields();
+      humidityPoint.addField("Relative Humidity %", currentSensorData.humidity);
+      humidityPoint.addField("Absolute Humidity g/m^3", currentSensorData.absoluteHumidity);
+      sendSensorData(humidityPoint);
 
-      voc_point.clearFields();
-      voc_point.addField("TVOC PPB", currentSensorData.tvoc);
-      sendSensorData(voc_point);
+      vocPoint.clearFields();
+      vocPoint.addField("TVOC PPB", currentSensorData.tvoc);
+      sendSensorData(vocPoint);
 
       lastDataPoint = time;
     }
@@ -509,4 +491,17 @@ void System::setDisplayBrightness(uint8_t brightness, uint8_t p1, uint8_t p2) {
   u8x8_cad_SendArg(u8g2.getU8x8(), (p2 << 4) | p1);
   u8x8_cad_EndTransfer(u8g2.getU8x8());
   u8g2.setContrast(brightness);
+}
+
+void System::sendSensorData(Point sensor) {
+  // Check WiFi connection and reconnect if needed
+  if (wifiMulti.run() != WL_CONNECTED) {
+    Serial.printf("WiFi connection lost\n");
+  }
+
+  // Write point
+  if (!client.writePoint(sensor)) {
+    Serial.print("InfluxDB write failed: ");
+    Serial.println(client.getLastErrorMessage());
+  }
 }

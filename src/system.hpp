@@ -1,5 +1,4 @@
-#ifndef SYSTEM_HPP	
-#define SYSTEM_HPP	
+#pragma once
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -11,11 +10,12 @@
 #include <Adafruit_PM25AQI.h>
 #include <MHZ.h>
 #include <U8g2lib.h>
-#include <WiFiMulti.h>	
-#include <InfluxDbClient.h>	
+#include <WiFiMulti.h>
+#include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
 #include "constants.hpp"
+#include "credentials.hpp"
 
 typedef struct {
   float temperature;         // C - temperature compensated for sensor self-heating
@@ -43,7 +43,6 @@ class System {
     System();
     void init();
     void tick();
-    void sendSensorData(Point sensor);	
 
   private:
     void updateDisplay();
@@ -55,15 +54,20 @@ class System {
                        float values[], uint8_t count, float min, float max,
                        bool showRange, uint8_t decimalPlaces = 1);
     void setDisplayBrightness(uint8_t brightness, uint8_t p1 = 1, uint8_t p2 = 10);
-    void connectToDatabase();  // call in setup	
-    Point temperature_point = Point("Temperature");	
-    Point humidity_point = Point("Humidity");	
-    Point voc_point = Point("Volatile Organic Compounds");	
-    Point co2_point = Point("Carbon Dioxide");	
-    Point pm_point = Point("Particulate Matter");	
-    WiFiMulti wifiMulti;	
+    void sendSensorData(Point sensor);
+
+    Point temperaturePoint = Point("Temperature");
+    Point humidityPoint = Point("Humidity");
+    Point vocPoint = Point("Volatile Organic Compounds");
+    Point co2Point = Point("Carbon Dioxide");
+    Point pmPoint = Point("Particulate Matter");
+    WiFiMulti wifiMulti;
+
+#ifdef INFLUXDB_CLOUD
     InfluxDBClient client = InfluxDBClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
-    // InfluxDBClient client{INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN};  // for influxdb2 (not cloud)
+#else
+    InfluxDBClient client = InfluxDBClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+#endif
 
 #ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
@@ -114,5 +118,3 @@ class System {
     sensor_data pmTempData;
     uint8_t pmSampleCount = 0;
 };
-
-#endif
