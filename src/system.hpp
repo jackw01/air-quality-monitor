@@ -106,6 +106,7 @@ class System {
 
     bool displayOn = false;
     bool displayCycle = true;
+    bool displayNeedsUpdate = true;
     uint8_t displayState = 0;
 
     // Sensor data

@@ -136,6 +136,7 @@ void System::tick() {
         // If display is off, turn it on
         setDisplayBrightness(DisplayBrightness);
         displayOn = true;
+        displayNeedsUpdate = true;
         lastDisplayCycle = time;
       } else if (displayCycle == true) {
         // If display is on, stop display from cycling automatically
@@ -143,6 +144,7 @@ void System::tick() {
       } else if (displayCycle == false) {
         // Manually cycle display state
         if (++displayState == DisplayStates) displayState = 0;
+        displayNeedsUpdate = true;
       }
     }
     lastButtonChange = time;
@@ -187,7 +189,6 @@ void System::tick() {
     if (co2 >= 0) {
       currentSensorData.co2 = co2;
       // Send data
-      // TODO: since co2 sensor only produces data every 120 seconds, send it here
       co2Point.clearFields();
       co2Point.addField("CO2 PPM", currentSensorData.co2);
       sendSensorData(co2Point);
@@ -222,7 +223,6 @@ void System::tick() {
       pmSampleCount = 0;
 
       // Send data
-      // TODO: since pm sensor only produces data every 120 seconds, send it here
       pmPoint.clearFields();
       pmPoint.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
       pmPoint.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
@@ -277,22 +277,17 @@ void System::tick() {
 
     // Send data to server
     if (time - lastDataPoint >= DataPushToServerInterval) {
-
-      // TODO
       temperaturePoint.clearFields();
       temperaturePoint.addField("Temperature C", currentSensorData.temperature);
       temperaturePoint.addField("Dew Point C", currentSensorData.dewPoint);
       sendSensorData(temperaturePoint);
-
       humidityPoint.clearFields();
       humidityPoint.addField("Relative Humidity %", currentSensorData.humidity);
       humidityPoint.addField("Absolute Humidity g/m^3", currentSensorData.absoluteHumidity);
       sendSensorData(humidityPoint);
-
       vocPoint.clearFields();
       vocPoint.addField("TVOC PPB", currentSensorData.tvoc);
       sendSensorData(vocPoint);
-
       lastDataPoint = time;
     }
 
@@ -328,12 +323,15 @@ void System::tick() {
       displayOn = false;
       displayCycle = true;
     }
-    updateDisplay();
+    displayNeedsUpdate = true;
     lastUpdate = time;
   }
+
+  if (displayNeedsUpdate) updateDisplay();
 }
 
 void System::updateDisplay() {
+  displayNeedsUpdate = false;
   u8g2.clearBuffer();
   char line[32];
   uint8_t width;
