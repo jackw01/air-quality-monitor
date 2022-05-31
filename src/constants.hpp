@@ -2,7 +2,8 @@
 
 //#define AHTx0
 #define SHT31
-//#define SWSERIAL
+#define SWSERIAL
+#define ESP8266_WIFI
 
 const uint8_t PinButton = 0;
 const uint8_t PinPMS5003Enable = 13;
@@ -33,7 +34,7 @@ const uint8_t DisplayBrightness = 128;
 const uint8_t DebounceInterval = 20;
 const uint16_t UpdateInterval = 1000; // ms per tick
 const uint32_t DataHistoryUpdateInterval = 60000; // ms
-const uint32_t DataPushToServerInterval = 15000; // ms
+const uint32_t DataPushToServerInterval = 30000; // ms
 const uint32_t DisplayAutoCycleInterval = 5000; // ms
 const uint32_t DisplayTimeout = 30000; // ms
 
@@ -48,7 +49,7 @@ const uint16_t SGP30BaselineECO2 = 0x941d;
 const uint16_t SGP30BaselineTVOC = 0x953f;
 
 // CO2 sensor preheat
-const uint16_t MHZ19StartupPeriod = 2;//60; // s
+const uint16_t MHZ19StartupPeriod = 60; // s
 
 // Particulate matter sensor schedule (to extend sensor life)
 const uint32_t PMMeasurementInterval = 120000; // ms, interval between readings

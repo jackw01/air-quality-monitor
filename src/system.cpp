@@ -43,6 +43,41 @@ void System::init() {
   u8g2.setFontMode(1);
   setDisplayBrightness(DisplayBrightness);
 
+  // Check for sensors
+
+  // Serial ports
+#ifdef SWSERIAL
+    co2Serial->begin(9600, SWSERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
+    pmSerial->begin(9600, SWSERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
+#else
+    co2Serial->begin(9600, SERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
+    pmSerial->begin(9600, SERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
+#endif
+
+  // Temp/Humidity
+#ifdef AHTx0
+  if (!aht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
+#endif
+#ifdef SHT31
+  if (!sht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
+#endif
+
+  // VOC
+  if (!sgp30.begin()) Serial.printf("Failed to communicate with SGP30 sensor\n");
+  Serial.printf("SGP30 Serial number: %04x%04x%04x\n",
+                sgp30.serialnumber[0], sgp30.serialnumber[1], sgp30.serialnumber[2]);
+  sgp30.setIAQBaseline(SGP30BaselineECO2, SGP30BaselineTVOC);
+
+  // CO2
+  //mhz19.setDebug(true);
+  mhz19.setAutoCalibrate(false);
+
+  // PM
+  pinMode(PinPMS5003Enable, OUTPUT);
+  digitalWrite(PinPMS5003Enable, true);
+  pms5003.begin_UART(pmSerial);
+  digitalWrite(PinPMS5003Enable, false);
+
   // Display startup screen
   u8g2.setFont(u8g2_font_profont10_tf);
   u8g2.drawStr(0, 6, "Connecting to WiFi...");
@@ -74,40 +109,6 @@ void System::init() {
     Serial.printf("InfluxDB connection failed: ");
     Serial.println(client.getLastErrorMessage());
   }
-
-  // Check for sensors
-
-  // Serial ports
-#ifdef SWSERIAL
-    co2Serial->begin(9600, SWSERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
-    pmSerial->begin(9600, SWSERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
-#else
-    co2Serial->begin(9600, SERIAL_8N1, PinMHZ19SerialRx, PinMHZ19SerialTx);
-    pmSerial->begin(9600, SERIAL_8N1, PinPMS5003SerialRx, PinPMS5003SerialTx);
-#endif
-
-  // Temp/Humidity
-#ifdef AHTx0
-  if (! aht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
-#endif
-#ifdef SHT31
-  if (! sht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
-#endif
-
-  // VOC
-  if (!sgp30.begin()) Serial.printf("Failed to communicate with SGP30 sensor\n");
-  Serial.printf("SGP30 Serial number: %04x%04x%04x\n",
-                sgp30.serialnumber[0], sgp30.serialnumber[1], sgp30.serialnumber[2]);
-  sgp30.setIAQBaseline(SGP30BaselineECO2, SGP30BaselineTVOC);
-
-  // CO2
-  mhz19.setAutoCalibrate(false);
-
-  // PM
-  pinMode(PinPMS5003Enable, OUTPUT);
-  digitalWrite(PinPMS5003Enable, true);
-  pms5003.begin_UART(pmSerial);
-  digitalWrite(PinPMS5003Enable, false);
 
   // Wait for CO2 sensor
   Serial.printf("CO2 sensor preheat...\n");
@@ -153,7 +154,6 @@ void System::tick() {
 
   // Rate limit the loop
   if (time - lastUpdate >= UpdateInterval) {
-
     // Temp/Humidity
 #ifdef AHTx0
     sensors_event_t humidity, temp;
@@ -492,8 +492,9 @@ void System::setDisplayBrightness(uint8_t brightness, uint8_t p1, uint8_t p2) {
 }
 
 void System::sendSensorData(Point sensor) {
+  Serial.printf("Writing data point...\n");
   // Check WiFi connection and reconnect if needed
-  if (wifiMulti.run() != WL_CONNECTED) {
+  if ((WiFi.RSSI() == 0) && wifiMulti.run() != WL_CONNECTED) {
     Serial.printf("WiFi connection lost\n");
   }
 

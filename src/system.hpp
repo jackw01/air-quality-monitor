@@ -2,20 +2,29 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
-#include <HardwareSerial.h>
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_SHT31.h>
 #include <Adafruit_SGP30.h>
 #include <Adafruit_PM25AQI.h>
 #include <MHZ.h>
 #include <U8g2lib.h>
-#include <WiFiMulti.h>
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
 #include "constants.hpp"
 #include "credentials.hpp"
+
+#ifdef SWSERIAL
+#include <SoftwareSerial.h>
+#else
+#include <HardwareSerial.h>
+#endif
+
+#ifdef ESP8266_WIFI
+#include <ESP8266WiFiMulti.h>
+#else
+#include <WiFiMulti.h>
+#endif
 
 typedef struct {
   float temperature;         // C - temperature compensated for sensor self-heating
@@ -61,13 +70,14 @@ class System {
     Point vocPoint = Point("Volatile Organic Compounds");
     Point co2Point = Point("Carbon Dioxide");
     Point pmPoint = Point("Particulate Matter");
-    WiFiMulti wifiMulti;
 
-#ifdef INFLUXDB_CLOUD
-    InfluxDBClient client = InfluxDBClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
+#ifdef ESP8266_WIFI
+    ESP8266WiFiMulti wifiMulti;
 #else
-    InfluxDBClient client = InfluxDBClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+    WiFiMulti wifiMulti;
 #endif
+
+    InfluxDBClient client = InfluxDBClient(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
 
 #ifdef AHTx0
     Adafruit_AHTX0 aht = Adafruit_AHTX0();
