@@ -59,7 +59,7 @@ void System::init() {
   if (!aht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
 #endif
 #ifdef SHT31
-  if (!sht.begin()) Serial.printf("Failed to communicate with AHTx0 sensor\n");
+  if (!sht.begin()) Serial.printf("Failed to communicate with SHT31 sensor\n");
 #endif
 
   // VOC

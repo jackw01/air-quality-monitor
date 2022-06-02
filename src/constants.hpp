@@ -2,8 +2,8 @@
 
 //#define AHTx0
 #define SHT31
-#define SWSERIAL
-#define ESP8266_WIFI
+#define SWSERIAL // Uncomment for ESP8266
+#define ESP8266_WIFI // Uncomment for ESP8266
 
 const uint8_t PinButton = 0;
 const uint8_t PinPMS5003Enable = 13;
@@ -41,7 +41,7 @@ const uint32_t DisplayTimeout = 30000; // ms
 const uint8_t DataHistoryLength = 60; // samples
 
 // Sensor stuff
-const float TemperatureOffset = -10.0; // degrees C, compensate for sensor self heating
+const float TemperatureOffset = -13.5; // degrees C, compensate for sensor self heating
 const uint32_t SGP30BaselineCheckInterval = 60000; // ms
 
 // Calibration values - specific to each SGP30 sensor
@@ -52,7 +52,7 @@ const uint16_t SGP30BaselineTVOC = 0x953f;
 const uint16_t MHZ19StartupPeriod = 60; // s
 
 // Particulate matter sensor schedule (to extend sensor life)
-const uint32_t PMMeasurementInterval = 120000; // ms, interval between readings
+const uint32_t PMMeasurementInterval = 180000; // ms, interval between readings
 const uint32_t PMWakeDelay = 25000; // ms, time to wait after waking up the sensor
-const uint32_t PMReadPeriod = 5000; // ms, time to sample the sensor after the wake delay
+const uint32_t PMReadPeriod = 12000; // ms, time to sample the sensor after the wake delay
 

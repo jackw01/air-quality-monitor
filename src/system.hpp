@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_SHT31.h>
-#include <Adafruit_SGP30.h>
+#include <sgp30_patched.hpp> // For some reason, adafruit's library won't work with my sensor
 #include <Adafruit_PM25AQI.h>
 #include <MHZ.h>
 #include <U8g2lib.h>
