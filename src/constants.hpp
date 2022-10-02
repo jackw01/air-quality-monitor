@@ -4,6 +4,7 @@
 #define SHT31
 #define SWSERIAL // Uncomment for ESP8266
 #define ESP8266_WIFI // Uncomment for ESP8266
+#define ESP8266_HOMEKIT
 
 const uint8_t PinButton = 0;
 const uint8_t PinPMS5003Enable = 13;
@@ -43,6 +44,7 @@ const uint8_t DataHistoryLength = 60; // samples
 // Sensor stuff
 const float TemperatureOffset = -13.5; // degrees C, compensate for sensor self heating
 const uint32_t SGP30BaselineCheckInterval = 60000; // ms
+const float VOCPPBToUGM3 = 4.5;
 
 // Calibration values - specific to each SGP30 sensor
 const uint16_t SGP30BaselineECO2 = 0x941d;
@@ -56,3 +58,17 @@ const uint32_t PMMeasurementInterval = 180000; // ms, interval between readings
 const uint32_t PMWakeDelay = 25000; // ms, time to wait after waking up the sensor
 const uint32_t PMReadPeriod = 12000; // ms, time to sample the sensor after the wake delay
 
+// Subjective air quality thresholds
+const uint32_t CO2DetectedThreshold = 1000;
+const uint32_t CO2Threshold5 = 1500;
+const uint32_t CO2Threshold4 = 1100;
+const uint32_t CO2Threshold3 = 800;
+const uint32_t CO2Threshold2 = 600;
+const uint32_t VOCThreshold5 = 4000;
+const uint32_t VOCThreshold4 = 1000;
+const uint32_t VOCThreshold3 = 400;
+const uint32_t VOCThreshold2 = 200;
+const uint32_t PMThreshold5 = 100;
+const uint32_t PMThreshold4 = 55;
+const uint32_t PMThreshold3 = 35;
+const uint32_t PMThreshold2 = 250;

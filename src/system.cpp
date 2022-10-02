@@ -26,6 +26,17 @@ static float cToF(float t) {
   return t * 1.8 + 32.0;
 }
 
+#ifdef ESP8266_HOMEKIT
+extern "C" homekit_server_config_t config;
+extern "C" homekit_characteristic_t cha_temperature;
+extern "C" homekit_characteristic_t cha_humidity;
+extern "C" homekit_characteristic_t cha_co2_detected;
+extern "C" homekit_characteristic_t cha_co2_level;
+extern "C" homekit_characteristic_t cha_air_quality;
+extern "C" homekit_characteristic_t cha_pm25;
+extern "C" homekit_characteristic_t cha_voc;
+#endif
+
 System::System() {
 }
 
@@ -110,6 +121,10 @@ void System::init() {
     Serial.println(client.getLastErrorMessage());
   }
 
+#ifdef ESP8266_HOMEKIT
+  arduino_homekit_setup(&config);
+#endif
+
   // Wait for CO2 sensor
   Serial.printf("CO2 sensor preheat...\n");
   u8g2.drawStr(0, 6 + 10, "CO2 sensor preheat...");
@@ -126,6 +141,10 @@ void System::init() {
 
 // Update function, called in a loop
 void System::tick() {
+#ifdef ESP8266_HOMEKIT
+  arduino_homekit_loop();;
+#endif
+
   uint32_t time = millis();
 
   // Check button
@@ -192,6 +211,15 @@ void System::tick() {
       co2Point.clearFields();
       co2Point.addField("CO2 PPM", currentSensorData.co2);
       sendSensorData(co2Point);
+
+#ifdef ESP8266_HOMEKIT
+      cha_co2_detected.value.int_value = currentSensorData.co2 > CO2DetectedThreshold ? 1 : 0;
+      cha_co2_level.value.float_value = currentSensorData.co2;
+      homekit_characteristic_notify(&cha_co2_detected, cha_co2_detected.value);
+      homekit_characteristic_notify(&cha_co2_level, cha_co2_level.value);
+      cha_air_quality.value.int_value = getSubjectiveAirQuality();
+      homekit_characteristic_notify(&cha_air_quality, cha_air_quality.value);
+#endif
     } else {
       Serial.printf("MHZ19 No new data available\n");
     }
@@ -208,26 +236,24 @@ void System::tick() {
       Serial.printf("PMS5003 Sleep\n");
       digitalWrite(PinPMS5003Enable, false);
       pmMeasurementDone = true;
-      currentSensorData.pm10 = pmTempData.pm10 / pmSampleCount;
-      currentSensorData.pm25 = pmTempData.pm25 / pmSampleCount;
-      currentSensorData.pm100 = pmTempData.pm100 / pmSampleCount;
-      currentSensorData.part003 = pmTempData.part003;
-      currentSensorData.part005 = pmTempData.part005;
-      currentSensorData.part010 = pmTempData.part010;
-      currentSensorData.part025 = pmTempData.part025;
-      currentSensorData.part050 = pmTempData.part050;
-      currentSensorData.part100 = pmTempData.part100;
+      if (pmSampleCount > 0) {
+        currentSensorData.pm10 = pmTempData.pm10 / pmSampleCount;
+        currentSensorData.pm25 = pmTempData.pm25 / pmSampleCount;
+        currentSensorData.pm100 = pmTempData.pm100 / pmSampleCount;
+        pmPoint.clearFields();
+        pmPoint.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
+        pmPoint.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
+        pmPoint.addField("PM 10 μg/m^3", currentSensorData.pm100);
+        sendSensorData(pmPoint);
+#ifdef ESP8266_HOMEKIT
+        cha_pm25.value.float_value = currentSensorData.pm25;
+        homekit_characteristic_notify(&cha_pm25, cha_pm25.value);
+#endif
+      }
       pmTempData.pm10 = 0;
       pmTempData.pm25 = 0;
       pmTempData.pm100 = 0;
       pmSampleCount = 0;
-
-      // Send data
-      pmPoint.clearFields();
-      pmPoint.addField("PM 1.0 μg/m^3", currentSensorData.pm10);
-      pmPoint.addField("PM 2.5 μg/m^3", currentSensorData.pm25);
-      pmPoint.addField("PM 10 μg/m^3", currentSensorData.pm100);
-      sendSensorData(pmPoint);
     }
 
     pmRead = pms5003.read(&pm);
@@ -238,18 +264,13 @@ void System::tick() {
         pmTempData.pm10 += pm.pm10_standard;
         pmTempData.pm25 += pm.pm25_standard;
         pmTempData.pm100 += pm.pm100_standard;
-        pmTempData.part003 = pm.particles_03um;
-        pmTempData.part005 = pm.particles_05um;
-        pmTempData.part010 = pm.particles_10um;
-        pmTempData.part025 = pm.particles_25um;
-        pmTempData.part050 = pm.particles_50um;
-        pmTempData.part100 = pm.particles_100um;
       }
     } else {
       Serial.printf("PMS5003 No new data available\n");
     }
 
     // Serial output
+    Serial.printf("Free Heap           : %d\n", ESP.getFreeHeap());
     Serial.printf("Temperature C       : %f\n", currentSensorData.temperature);
     Serial.printf("Temperature C (raw) : %f\n", currentSensorData.temperatureRaw);
     Serial.printf("Humidity %%RH        : %f\n", currentSensorData.humidity);
@@ -288,6 +309,16 @@ void System::tick() {
       vocPoint.clearFields();
       vocPoint.addField("TVOC PPB", currentSensorData.tvoc);
       sendSensorData(vocPoint);
+
+#ifdef ESP8266_HOMEKIT
+      cha_temperature.value.float_value = currentSensorData.temperature;
+      cha_humidity.value.float_value = currentSensorData.humidity;
+      homekit_characteristic_notify(&cha_temperature, cha_temperature.value);
+      homekit_characteristic_notify(&cha_humidity, cha_humidity.value);
+      cha_voc.value.float_value = (float)currentSensorData.tvoc * VOCPPBToUGM3;
+      homekit_characteristic_notify(&cha_voc, cha_voc.value);
+#endif
+
       lastDataPoint = time;
     }
 
@@ -502,5 +533,27 @@ void System::sendSensorData(Point sensor) {
   if (!client.writePoint(sensor)) {
     Serial.print("InfluxDB write failed: ");
     Serial.println(client.getLastErrorMessage());
+  }
+}
+
+uint8_t System::getSubjectiveAirQuality() {
+  if (currentSensorData.co2 > CO2Threshold5 ||
+      currentSensorData.tvoc > VOCThreshold5 ||
+      currentSensorData.pm25 > PMThreshold5) {
+    return 5;
+  } else if (currentSensorData.co2 > CO2Threshold4 ||
+             currentSensorData.tvoc > VOCThreshold4 ||
+             currentSensorData.pm25 > PMThreshold4) {
+    return 4;
+  } else if (currentSensorData.co2 > CO2Threshold3 ||
+             currentSensorData.tvoc > VOCThreshold3 ||
+             currentSensorData.pm25 > PMThreshold3) {
+    return 3;
+  } else if (currentSensorData.co2 > CO2Threshold2 ||
+             currentSensorData.tvoc > VOCThreshold2 ||
+             currentSensorData.pm25 > PMThreshold2) {
+    return 2;
+  } else {
+    return 1;
   }
 }

@@ -26,6 +26,10 @@
 #include <WiFiMulti.h>
 #endif
 
+#ifdef ESP8266_HOMEKIT
+#include <arduino_homekit_server.h>
+#endif
+
 typedef struct {
   float temperature;         // C - temperature compensated for sensor self-heating
   float humidity;            // %RH - humidity compensated for sensor self-heating
@@ -39,12 +43,6 @@ typedef struct {
   uint16_t pm10;             // μg/m^3
   uint16_t pm25;             // μg/m^3
   uint16_t pm100;            // μg/m^3
-  uint16_t part003;          // particles per deciliter - debug purposes only
-  uint16_t part005;          // particles per deciliter - debug purposes only
-  uint16_t part010;          // particles per deciliter - debug purposes only
-  uint16_t part025;          // particles per deciliter - debug purposes only
-  uint16_t part050;          // particles per deciliter - debug purposes only
-  uint16_t part100;          // particles per deciliter - debug purposes only
 } sensor_data;
 
 class System {
@@ -64,6 +62,7 @@ class System {
                        bool showRange, uint8_t decimalPlaces = 1);
     void setDisplayBrightness(uint8_t brightness, uint8_t p1 = 1, uint8_t p2 = 10);
     void sendSensorData(Point sensor);
+    uint8_t getSubjectiveAirQuality();
 
     Point temperaturePoint = Point("Temperature");
     Point humidityPoint = Point("Humidity");
